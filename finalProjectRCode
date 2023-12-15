@@ -1,0 +1,95 @@
+#Pasteable version of the code for my project, based to load off of the .csv uploaded to github;
+#This loads and attaches the data;
+FKPData<-read.csv("https://raw.githubusercontent.com/VictoriaMyhre/ecologyFinalProjectData/main/FKPFinal.csv",header=T);
+View(FKPData);
+attach(FKPData);
+
+#Shapiro test, will determine normality of the data set at large;
+shapiro.test(GHTOTAL);
+
+#Wilcoxon Signed Rank Testing;
+wilcox.test(GHTOTAL ~ Mound, exact = FALSE);
+
+#These generate ANOVA tests with summaries, and accompanying Tukey HSD, for the total grasshopper data;
+anovaGHTMound<-aov(GHTOTAL ~ Mound);summary(anovaGHTMound);TukeyHSD(anovaGHTMound);
+
+#These establish subsets split between the north and east mounds;
+northSet<-subset(FKPData, Mound == "N");
+eastSet<-subset(FKPData, Mound == "E");
+
+#These generate ANOVA tests with summaries and TukeyHSD for total grasshoppers by date, repeated for total grasshoppers by date within each mound; 
+#Dates are first converted from int to factor so that TukeyHSD test doesn't break;
+factorDate<-as.factor(Date);
+factorDateN<-as.factor(northSet$Date);
+factorDateE<-as.factor(eastSet$Date);
+anovaGHTDate<-aov(GHTOTAL ~ factorDate);summary(anovaGHTDate);TukeyHSD(anovaGHTDate);
+anovaGHTDateN<-aov(northSet$GHTOTAL ~ factorDateN);summary(anovaGHTDateN);TukeyHSD(anovaGHTDateN);
+anovaGHTDateE<-aov(eastSet$GHTOTAL ~ factorDateE);summary(anovaGHTDateE);TukeyHSD(anovaGHTDateE);
+
+#These set up and generate linear and quadratic regression models for the data;
+#Overall models;
+Datep2<-Date^2;
+linGHTModel<-lm(formula = GHTOTAL ~ Date, data=FKPData);summary(linGHTModel);
+quadGHTModel<-lm(formula = GHTOTAL ~ I(Date + I(Datep2)), data=FKPData);summary(quadGHTModel);
+#North mound models;
+Datep2N<-northSet$Date^2;
+linGHTN<-lm(formula = northSet$GHTOTAL ~ northSet$Date, data = northSet);summary(linGHTN);
+quadGHTN<-lm(formula = northSet$GHTOTAL ~ I(northSet$Date + I(Datep2N)), data= northSet);summary(quadGHTN);
+#East mound models;
+Datep2E<-eastSet$Date^2;
+linGHTE<-lm(formula = eastSet$GHTOTAL ~ eastSet$Date, data = eastSet);summary(linGHTE);
+quadGHTE<-lm(formula = eastSet$GHTOTAL ~ I(eastSet$Date + I(Datep2E)), data= eastSet);summary(quadGHTE);
+
+#QQ normality plots for visual confirmation of the normality of the total grasshopper data;
+qqnorm(GHTOTAL, main = "Total Grasshopper Count");
+
+#Log-transformed linear and quadratic models;
+#Overall models;
+logGHTOTAL<-log10(GHTOTAL+1);
+linlogGHTModel<-lm(formula = logGHTOTAL ~ Date, data=FKPData);summary(linlogGHTModel);
+quadlogGHTModel<-lm(formula = logGHTOTAL ~ Date + Datep2, data=FKPData);summary(quadlogGHTModel);
+#North mound models;
+northSet$logGHTOTAL<-log10(northSet$GHTOTAL+1);
+linlogGHTN<-lm(formula = northSet$logGHTOTAL ~ northSet$Date, data = northSet);summary(linlogGHTN);
+quadlogGHTN<-lm(formula = northSet$logGHTOTAL ~ northSet$Date + Datep2N, data= northSet);summary(quadlogGHTN);
+#East mound models;
+eastSet$logGHTOTAL<-log10(eastSet$GHTOTAL+1);
+linlogGHTE<-lm(formula = eastSet$logGHTOTAL ~ eastSet$Date, data = eastSet);summary(linlogGHTE);
+quadlogGHTE<-lm(formula = eastSet$logGHTOTAL ~ eastSet$Date + Datep2E, data= eastSet);summary(quadlogGHTE);
+
+#Plots from here on out;
+#Boxplots for GHTOTAL;
+boxplot(GHTOTAL ~ Date, xlab = "Date", ylab = "Total Grasshoppers", main = "Total Grasshopper Count by Date");
+boxplot(GHTOTAL ~ Mound, xlab = "Mound", ylab = "Total Grasshoppers", main = "Total Grasshopper Count by Mound");
+boxplot(northSet$GHTOTAL ~ northSet$Date, xlab = "Date", ylab = "Total Grasshoppers (North)", main = "Total Grasshopper Count by Date (North)");
+boxplot(eastSet$GHTOTAL ~ eastSet$Date, xlab = "Date", ylab = "Total Grasshoppers (East)", main = "Total Grasshopper Count by Date (East)");
+
+#Total scatterplot with and without regression line;
+plot(logGHTOTAL ~ Date, main = "Log Total Grasshoppers by Date", xlab = "Date", ylab = "Log Total Grasshoppers", col = "black", pch = 19);
+#Except it's not actually that basic and I have to use predict() syntax here because it's a quadratic model;
+plotTempData<-data.frame(Date = seq(from = min(Date), to = max(Date), length.out = length(Date)));
+predictquadlogGHTPlot<-predict(quadlogGHTModel, newdata = plotTempData);
+plot(logGHTOTAL ~ Date, data = FKPData, xlab = "Date", ylab = "Log Total Grasshoppers", main = "Log Total Grasshoppers by Date", col = "black", pch = 19);
+lines(predictquadlogGHTPlot ~ plotTempData$Date, col = "red");
+legend("topleft", c("quadratic model"), col = c("red"), lty = 1, cex=0.9)
+
+#North scatterplot with and without regression line;
+plot(northSet$logGHTOTAL ~ northSet$Date, main = "Log Total Grasshoppers by Date (North)", xlab = "Date", ylab = "Log Total Grasshoppers (North)", col = "black", pch = 19);
+#Except it's not actually that basic and I have to use predict() syntax here because it's a quadratic model;
+plotTempDataNorth<-data.frame(Date = seq(from = min(northSet$Date), to = max(northSet$Date), length.out = length(northSet$Date)));
+predictquadlogGHTN<-predict(quadlogGHTN, newdata = plotTempDataNorth);
+plot(northSet$logGHTOTAL ~ northSet$Date, data = northSet, xlab = "Date", ylab = "Log Total Grasshoppers (North)", main = "Log Total Grasshoppers by Date (North)", col = "black", pch = 19)
+lines(predictquadlogGHTN ~ plotTempDataNorth$Date, col = "red");
+legend("topleft", c("quadratic model"), col = c("red"), lty = 1, cex=0.9)
+
+#East scatterplot with and without regression line;
+plot(eastSet$logGHTOTAL ~ eastSet$Date, main = "Log Total Grasshoppers by Date (East)", xlab = "Date", ylab = "Log Total Grasshoppers (East)", col = "black", pch = 19);
+#Except it's not actually that basic and I have to use predict() syntax here because it's a quadratic model;
+plotTempDataEast<-data.frame(Date = seq(from = min(eastSet$Date), to = max(eastSet$Date), length.out = length(eastSet$Date)));
+predictquadlogGHTE<-predict(quadlogGHTE, newdata = plotTempDataEast);
+plot(eastSet$logGHTOTAL ~ eastSet$Date, data = eastSet, xlab = "Date", ylab = "Log Total Grasshoppers (East)", main = "Log Total Grasshoppers by Date (East)", col = "black", pch = 19)
+lines(predictquadlogGHTE ~ plotTempDataEast$Date, col = "red");
+legend("topleft", c("quadratic model"), col = c("red"), lty = 1, cex=0.9);
+
+#Basic histogram of total grasshopper count;
+hist(GHTOTAL, main = "Distribution of Total Grasshopper Count", xlab = "Recorded Total Grasshopper Observations", ylab = "Frequency")
